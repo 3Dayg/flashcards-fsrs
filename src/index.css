@@ -214,6 +214,21 @@ p {
   gap: 0.65rem;
 }
 
+.true-false-choices {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.open-prompt {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.self-grade-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
 .choice {
   text-align: left;
   border: 1px solid var(--line);
@@ -399,6 +414,60 @@ p {
   resize: vertical;
 }
 
+.type-picker .type-options,
+.type-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.type-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.55rem 0.8rem;
+  background: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.type-option:has(input:checked) {
+  border-color: var(--teal);
+  background: var(--teal-soft);
+}
+
+.type-option input {
+  margin: 0;
+}
+
+.library-item-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.55rem 0.75rem;
+}
+
+.library-item-heading h3 {
+  margin: 0;
+  flex: 1 1 12rem;
+}
+
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.75);
+  white-space: nowrap;
+}
+
 .option-editor {
   display: grid;
   gap: 0.5rem;
@@ -465,6 +534,10 @@ p {
 
 @media (max-width: 800px) {
   .study-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .true-false-choices {
     grid-template-columns: 1fr;
   }
 

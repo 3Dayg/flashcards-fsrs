@@ -1,25 +1,44 @@
 import type { Card as FsrsCard, Grade } from 'ts-fsrs'
 
+/** Supported flashcard prompt styles. */
+export type CardType = 'multiple' | 'trueFalse' | 'open'
+
 /** One multiple-choice option on a flashcard. */
 export type ChoiceOption = {
   id: string
   text: string
 }
 
-/** User-facing flashcard content plus FSRS scheduling state. */
-export type Flashcard = {
+type FlashcardBase = {
   id: string
   question: string
+  /** Canonical answer / short explanation shown after answering or revealing. */
   answer: string
-  /** Typically four choices; exactly one matches `correctOptionId`. */
-  options: ChoiceOption[]
-  correctOptionId: string
   tags: string[]
   createdAt: string
   updatedAt: string
   /** Serialized FSRS card fields (dates as ISO strings in storage). */
   fsrs: StoredFsrsCard
 }
+
+export type MultipleChoiceCard = FlashcardBase & {
+  type: 'multiple'
+  /** Typically four choices; exactly one matches `correctOptionId`. */
+  options: ChoiceOption[]
+  correctOptionId: string
+}
+
+export type TrueFalseCard = FlashcardBase & {
+  type: 'trueFalse'
+  correctBoolean: boolean
+}
+
+export type OpenCard = FlashcardBase & {
+  type: 'open'
+}
+
+/** User-facing flashcard content plus FSRS scheduling state. */
+export type Flashcard = MultipleChoiceCard | TrueFalseCard | OpenCard
 
 export type StoredFsrsCard = {
   due: string
@@ -52,4 +71,11 @@ export type DueStats = {
   dueNow: number
   total: number
   byTag: Record<string, number>
+}
+
+/** Human-readable labels for card types in the UI. */
+export const CARD_TYPE_LABELS: Record<CardType, string> = {
+  multiple: 'Multiple choice',
+  trueFalse: 'True / false',
+  open: 'Open question',
 }

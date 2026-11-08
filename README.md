@@ -1,6 +1,7 @@
 # Flashcards FSRS
 
-A client-only React flashcard app with multiple-choice questions, tags, and
+A client-only React flashcard app with multiple-choice, true/false, and open
+recall questions, tags, and
 [FSRS](https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm)
 spaced repetition. Everything runs in the browser and persists to **IndexedDB**
 on the user’s machine — no backend, suitable for **GitHub Pages**.
@@ -72,8 +73,12 @@ Prefer the Actions workflow above so Pages stays in sync with `main`.
 
 ### Creating cards
 
-Each flashcard has a question, a short answer explanation, up to four
-multiple-choice options (one marked correct), and comma-separated **tags**.
+Each flashcard has a **type**, a question, a short answer explanation, and
+comma-separated **tags**:
+
+- **Multiple choice** — up to four options with one marked correct
+- **True / false** — statement graded against a True or False answer
+- **Open question** — recall the answer, then reveal and self-check
 
 ### Study pool
 
@@ -83,7 +88,8 @@ Optional tag filters keep only cards that have at least one selected tag
 
 ### Rating after an answer
 
-1. Choose a multiple-choice option (the UI records right vs wrong).
+1. Answer the prompt (pick an option, choose true/false, or reveal an open
+   answer and mark whether your recall was right).
 2. Rate difficulty: **hard**, **good**, or **easy**.
 
 Those two signals map into a single FSRS grade:

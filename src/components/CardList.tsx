@@ -1,5 +1,6 @@
 import { formatDue } from '../lib/fsrs'
 import type { Flashcard } from '../types'
+import { CARD_TYPE_LABELS } from '../types'
 
 type CardListProps = {
   cards: Flashcard[]
@@ -21,7 +22,10 @@ export function CardList({ cards, onEdit, onDelete }: CardListProps) {
       {cards.map((card) => (
         <li key={card.id} className="library-item">
           <div className="library-item-main">
-            <h3>{card.question}</h3>
+            <div className="library-item-heading">
+              <h3>{card.question}</h3>
+              <span className="type-badge">{CARD_TYPE_LABELS[card.type]}</span>
+            </div>
             <p className="muted small">{card.answer}</p>
             <div className="tag-row compact">
               {card.tags.length === 0 ? (
