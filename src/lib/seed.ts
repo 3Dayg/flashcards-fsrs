@@ -1,7 +1,9 @@
 import { countCards, createCard } from './db'
+import type { FlashcardInput } from './db'
 
-const DEMO_CARDS = [
+const DEMO_CARDS: FlashcardInput[] = [
   {
+    type: 'multiple',
     question: 'What does FSRS stand for?',
     answer: 'Free Spaced Repetition Scheduler',
     options: [
@@ -14,6 +16,7 @@ const DEMO_CARDS = [
     tags: ['fsrs', 'basics'],
   },
   {
+    type: 'multiple',
     question: 'Where does this app store your flashcards?',
     answer: 'In IndexedDB in your browser on this device',
     options: [
@@ -26,6 +29,7 @@ const DEMO_CARDS = [
     tags: ['app', 'basics'],
   },
   {
+    type: 'multiple',
     question: 'Which rating should you pick when you get a card wrong?',
     answer: 'Mark it wrong — FSRS schedules it as Again',
     options: [
@@ -38,6 +42,7 @@ const DEMO_CARDS = [
     tags: ['fsrs', 'study'],
   },
   {
+    type: 'multiple',
     question: 'How do tags affect the study pool?',
     answer: 'You can filter or draw due cards by one or more tags',
     options: [
@@ -49,19 +54,26 @@ const DEMO_CARDS = [
     correctIndex: 2,
     tags: ['tags', 'study'],
   },
-] as const
+  {
+    type: 'trueFalse',
+    question: 'FSRS always schedules a wrong answer as Again.',
+    answer: 'True — misses map to the Again grade regardless of difficulty.',
+    correctBoolean: true,
+    tags: ['fsrs', 'study'],
+  },
+  {
+    type: 'open',
+    question: 'Name the three difficulty ratings you choose after answering.',
+    answer: 'Hard, good, and easy',
+    tags: ['fsrs', 'study'],
+  },
+]
 
 /** Seed a few demo cards the first time the library is empty. */
 export async function seedDemoCardsIfEmpty(): Promise<boolean> {
   if ((await countCards()) > 0) return false
   for (const card of DEMO_CARDS) {
-    await createCard({
-      question: card.question,
-      answer: card.answer,
-      options: [...card.options],
-      correctIndex: card.correctIndex,
-      tags: [...card.tags],
-    })
+    await createCard(card)
   }
   return true
 }

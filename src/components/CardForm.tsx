@@ -1,7 +1,8 @@
 import { useMemo, useState, type FormEvent } from 'react'
 
 import type { FlashcardInput } from '../lib/db'
-import type { Flashcard } from '../types'
+import type { CardType, Flashcard } from '../types'
+import { CARD_TYPE_LABELS } from '../types'
 
 type CardFormProps = {
   initial?: Flashcard
@@ -11,6 +12,11 @@ type CardFormProps = {
 }
 
 const EMPTY_OPTIONS = ['', '', '', '']
+const CARD_TYPES: CardType[] = ['open', 'trueFalse', 'multiple']
+
+function initialType(card?: Flashcard): CardType {
+  return card?.type ?? 'open'
+}
 
 export function CardForm({
   initial,
@@ -19,22 +25,26 @@ export function CardForm({
   submitLabel = 'Save card',
 }: CardFormProps) {
   const initialOptions = useMemo(() => {
-    if (!initial) return EMPTY_OPTIONS
+    if (!initial || initial.type !== 'multiple') return EMPTY_OPTIONS
     const texts = initial.options.map((option) => option.text)
     while (texts.length < 4) texts.push('')
     return texts.slice(0, 4)
   }, [initial])
 
+  const [type, setType] = useState<CardType>(() => initialType(initial))
   const [question, setQuestion] = useState(initial?.question ?? '')
   const [answer, setAnswer] = useState(initial?.answer ?? '')
   const [options, setOptions] = useState<string[]>(initialOptions)
   const [correctIndex, setCorrectIndex] = useState(() => {
-    if (!initial) return 0
+    if (!initial || initial.type !== 'multiple') return 0
     const index = initial.options.findIndex(
       (option) => option.id === initial.correctOptionId,
     )
     return index >= 0 ? index : 0
   })
+  const [correctBoolean, setCorrectBoolean] = useState(() =>
+    initial?.type === 'trueFalse' ? initial.correctBoolean : true,
+  )
   const [tagsText, setTagsText] = useState(initial?.tags.join(', ') ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -44,6 +54,32 @@ export function CardForm({
     setBusy(true)
     setError(null)
     try {
+      const tags = tagsText
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+
+      if (type === 'trueFalse') {
+        await onSubmit({
+          type: 'trueFalse',
+          question,
+          answer,
+          correctBoolean,
+          tags,
+        })
+        return
+      }
+
+      if (type === 'open') {
+        await onSubmit({
+          type: 'open',
+          question,
+          answer,
+          tags,
+        })
+        return
+      }
+
       const filled = options.map((text) => text.trim()).filter(Boolean)
       // Preserve correct choice after removing blank trailing options.
       const trimmedOptions = options.map((text) => text.trim())
@@ -56,14 +92,12 @@ export function CardForm({
       })
 
       await onSubmit({
+        type: 'multiple',
         question,
         answer,
         options: compact.length >= 2 ? compact : filled,
         correctIndex: nextCorrect,
-        tags: tagsText
-          .split(',')
-          .map((tag) => tag.trim())
-          .filter(Boolean),
+        tags,
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save card.')
@@ -76,8 +110,31 @@ export function CardForm({
     setOptions((prev) => prev.map((item, i) => (i === index ? value : item)))
   }
 
+  const answerLabel =
+    type === 'open'
+      ? 'Answer (revealed after you recall)'
+      : 'Answer (shown after you choose)'
+
   return (
     <form className="card-form panel" onSubmit={handleSubmit}>
+      <fieldset className="field type-picker">
+        <legend>Card type</legend>
+        <div className="type-options" role="radiogroup" aria-label="Card type">
+          {CARD_TYPES.map((value) => (
+            <label key={value} className="type-option">
+              <input
+                type="radio"
+                name="card-type"
+                value={value}
+                checked={type === value}
+                onChange={() => setType(value)}
+              />
+              <span>{CARD_TYPE_LABELS[value]}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
       <label className="field">
         <span>Question</span>
         <textarea
@@ -90,41 +147,74 @@ export function CardForm({
       </label>
 
       <label className="field">
-        <span>Answer (shown after you choose)</span>
+        <span>{answerLabel}</span>
         <textarea
           value={answer}
           onChange={(event) => setAnswer(event.target.value)}
           rows={2}
           required
-          placeholder="Short explanation or canonical answer"
+          placeholder={
+            type === 'open'
+              ? 'Canonical answer to compare after recalling'
+              : 'Short explanation or canonical answer'
+          }
         />
       </label>
 
-      <fieldset className="field">
-        <legend>Multiple-choice options</legend>
-        <p className="muted small">
-          Enter up to four options and mark the correct one.
-        </p>
-        <div className="option-editor">
-          {options.map((option, index) => (
-            <label key={index} className="option-row">
+      {type === 'multiple' ? (
+        <fieldset className="field">
+          <legend>Multiple-choice options</legend>
+          <p className="muted small">
+            Enter up to four options and mark the correct one.
+          </p>
+          <div className="option-editor">
+            {options.map((option, index) => (
+              <label key={index} className="option-row">
+                <input
+                  type="radio"
+                  name="correct-option"
+                  checked={correctIndex === index}
+                  onChange={() => setCorrectIndex(index)}
+                  aria-label={`Mark option ${index + 1} as correct`}
+                />
+                <input
+                  type="text"
+                  value={option}
+                  onChange={(event) => updateOption(index, event.target.value)}
+                  placeholder={`Option ${index + 1}`}
+                />
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
+
+      {type === 'trueFalse' ? (
+        <fieldset className="field">
+          <legend>Correct answer</legend>
+          <p className="muted small">Mark whether the statement is true or false.</p>
+          <div className="type-options" role="radiogroup" aria-label="Correct answer">
+            <label className="type-option">
               <input
                 type="radio"
-                name="correct-option"
-                checked={correctIndex === index}
-                onChange={() => setCorrectIndex(index)}
-                aria-label={`Mark option ${index + 1} as correct`}
+                name="correct-boolean"
+                checked={correctBoolean === true}
+                onChange={() => setCorrectBoolean(true)}
               />
-              <input
-                type="text"
-                value={option}
-                onChange={(event) => updateOption(index, event.target.value)}
-                placeholder={`Option ${index + 1}`}
-              />
+              <span>True</span>
             </label>
-          ))}
-        </div>
-      </fieldset>
+            <label className="type-option">
+              <input
+                type="radio"
+                name="correct-boolean"
+                checked={correctBoolean === false}
+                onChange={() => setCorrectBoolean(false)}
+              />
+              <span>False</span>
+            </label>
+          </div>
+        </fieldset>
+      ) : null}
 
       <label className="field">
         <span>Tags</span>
