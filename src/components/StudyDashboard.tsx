@@ -34,8 +34,8 @@ export function StudyDashboard({
 
   return (
     <section className="study-layout">
-      <aside className="panel study-sidebar">
-        <div className="stat-stack">
+      <aside className="panel progress-strip">
+        <div className="stat-stack strip-stats">
           <div>
             <p className="eyebrow">Due now</p>
             <p className="stat-value">{progress.dueNow}</p>
@@ -47,20 +47,22 @@ export function StudyDashboard({
             <p className="muted small">total cards</p>
           </div>
         </div>
-        <TagFilter
-          tags={tags}
-          selected={selectedTags}
-          onToggle={onToggleTag}
-          onClear={onClearTags}
-          dueByTag={dueByTag}
-        />
-        <p className="muted small">
-          Session presets pull the oldest due cards
-          {selectedTags.length > 0
-            ? ' that match at least one selected tag'
-            : ''}
-          .
-        </p>
+        <div className="progress-strip-filters">
+          <TagFilter
+            tags={tags}
+            selected={selectedTags}
+            onToggle={onToggleTag}
+            onClear={onClearTags}
+            dueByTag={dueByTag}
+          />
+          <p className="muted small strip-hint">
+            Presets pull the oldest due cards
+            {selectedTags.length > 0
+              ? ' matching a selected tag'
+              : ''}
+            .
+          </p>
+        </div>
       </aside>
 
       <div className="dashboard-stack">

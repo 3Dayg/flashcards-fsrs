@@ -65,9 +65,7 @@ export default function App() {
       <header className="topbar">
         <div className="brand-block">
           <p className="brand">Flashcards FSRS</p>
-          <p className="brand-sub">
-            Local study deck with spaced repetition — no account, no server.
-          </p>
+          <p className="brand-sub">Local spaced-repetition deck — no account.</p>
         </div>
         <nav className="nav" aria-label="Primary">
           <button
