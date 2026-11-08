@@ -17,6 +17,17 @@ export function buildStudyPool(
     .sort((a, b) => a.fsrs.due.localeCompare(b.fsrs.due))
 }
 
+/** First `limit` due cards for a fixed practice session queue. */
+export function takeSessionCards(
+  cards: Flashcard[],
+  selectedTags: string[],
+  limit: number,
+  now = new Date(),
+): Flashcard[] {
+  if (limit <= 0) return []
+  return buildStudyPool(cards, selectedTags, now).slice(0, limit)
+}
+
 export function collectTags(cards: Flashcard[]): string[] {
   const tags = new Set<string>()
   for (const card of cards) {

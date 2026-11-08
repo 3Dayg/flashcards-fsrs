@@ -1,6 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie'
 
-import type { CardType, Flashcard } from '../types'
+import type { CardType, Flashcard, ReviewEvent } from '../types'
 import { newFsrsCard } from './fsrs'
 import { createId } from './id'
 
@@ -32,6 +32,7 @@ export type FlashcardInput =
 
 type FlashcardsDatabase = Dexie & {
   cards: EntityTable<Flashcard, 'id'>
+  reviews: EntityTable<ReviewEvent, 'id'>
 }
 
 const db = new Dexie('flashcards-fsrs') as FlashcardsDatabase
@@ -54,6 +55,11 @@ db.version(2)
         }
       })
   })
+
+db.version(3).stores({
+  cards: 'id, *tags, updatedAt, fsrs.due',
+  reviews: 'id, cardId, sessionId, ratedAt',
+})
 
 function normalizeTags(tags: string[]): string[] {
   const seen = new Set<string>()
@@ -215,7 +221,10 @@ export async function saveCard(card: Flashcard): Promise<void> {
 }
 
 export async function deleteCard(id: string): Promise<void> {
-  await db.cards.delete(id)
+  await db.transaction('rw', db.cards, db.reviews, async () => {
+    await db.reviews.where('cardId').equals(id).delete()
+    await db.cards.delete(id)
+  })
 }
 
 export async function listAllTags(): Promise<string[]> {
@@ -229,6 +238,29 @@ export async function listAllTags(): Promise<string[]> {
 
 export async function countCards(): Promise<number> {
   return db.cards.count()
+}
+
+export type ReviewInput = Omit<ReviewEvent, 'id'>
+
+export async function addReview(input: ReviewInput): Promise<ReviewEvent> {
+  const event: ReviewEvent = {
+    id: createId('rev'),
+    ...input,
+  }
+  await db.reviews.add(event)
+  return event
+}
+
+export async function listReviews(): Promise<ReviewEvent[]> {
+  const reviews = await db.reviews.toArray()
+  return reviews.sort((a, b) => b.ratedAt.localeCompare(a.ratedAt))
+}
+
+export async function listReviewsForSession(
+  sessionId: string,
+): Promise<ReviewEvent[]> {
+  const reviews = await db.reviews.where('sessionId').equals(sessionId).toArray()
+  return reviews.sort((a, b) => a.ratedAt.localeCompare(b.ratedAt))
 }
 
 export { db }

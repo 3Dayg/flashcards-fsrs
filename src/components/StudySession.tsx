@@ -1,34 +1,39 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { GRADE_LABELS, formatDue, ratingToGrade } from '../lib/fsrs'
+import { formatAccuracy } from '../lib/progress'
 import type {
   Correctness,
   Difficulty,
   Flashcard,
+  PracticeSession,
+  SessionSummary,
   StudyRating,
 } from '../types'
-import { TagFilter } from './TagFilter'
 
 type StudySessionProps = {
-  pool: Flashcard[]
-  tags: string[]
-  selectedTags: string[]
-  onToggleTag: (tag: string) => void
-  onClearTags: () => void
-  onReview: (id: string, rating: StudyRating) => Promise<void>
-  totalCards: number
+  session: PracticeSession
+  cardsById: Map<string, Flashcard>
+  onReview: (
+    id: string,
+    rating: StudyRating,
+    sessionId: string,
+  ) => Promise<void>
+  onFinish: (summary: SessionSummary) => void
 }
 
-type Phase = 'prompt' | 'grade' | 'empty'
+type Phase = 'prompt' | 'grade' | 'summary'
+
+type CompletedReview = {
+  cardId: string
+  correctness: Correctness
+}
 
 export function StudySession({
-  pool,
-  tags,
-  selectedTags,
-  onToggleTag,
-  onClearTags,
+  session,
+  cardsById,
   onReview,
-  totalCards,
+  onFinish,
 }: StudySessionProps) {
   const [index, setIndex] = useState(0)
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null)
@@ -36,18 +41,24 @@ export function StudySession({
   const [phase, setPhase] = useState<Phase>('prompt')
   const [correctness, setCorrectness] = useState<Correctness | null>(null)
   const [busy, setBusy] = useState(false)
+  const [completed, setCompleted] = useState<CompletedReview[]>([])
+  const [endedEarly, setEndedEarly] = useState(false)
 
-  const dueByTag = useMemo(() => {
-    const counts: Record<string, number> = {}
-    for (const card of pool) {
-      for (const tag of card.tags) {
-        counts[tag] = (counts[tag] ?? 0) + 1
-      }
-    }
-    return counts
-  }, [pool])
+  const plannedSize = session.plannedSize
+  const cardId = session.cardIds[index] ?? null
+  const card = cardId ? (cardsById.get(cardId) ?? null) : null
+  const remaining = Math.max(plannedSize - completed.length, 0)
 
-  const card = pool[index] ?? null
+  const summary: SessionSummary = useMemo(
+    () => ({
+      sessionId: session.id,
+      plannedSize,
+      completed: completed.length,
+      correct: completed.filter((item) => item.correctness === 'right').length,
+      endedEarly,
+    }),
+    [session.id, plannedSize, completed, endedEarly],
+  )
 
   function resetPrompt(nextPhase: Phase = 'prompt') {
     setSelectedOptionId(null)
@@ -56,36 +67,57 @@ export function StudySession({
     setPhase(nextPhase)
   }
 
-  useEffect(() => {
-    setIndex(0)
-    resetPrompt(pool.length === 0 ? 'empty' : 'prompt')
-  }, [selectedTags.join('|'), pool.length === 0])
+  function buildSummary(
+    reviews: CompletedReview[],
+    early: boolean,
+  ): SessionSummary {
+    return {
+      sessionId: session.id,
+      plannedSize,
+      completed: reviews.length,
+      correct: reviews.filter((item) => item.correctness === 'right').length,
+      endedEarly: early,
+    }
+  }
 
-  useEffect(() => {
-    if (pool.length === 0) {
-      setPhase('empty')
+  function finishSession(reviews: CompletedReview[], early: boolean) {
+    const next = buildSummary(reviews, early)
+    setEndedEarly(early)
+    setCompleted(reviews)
+    if (reviews.length === 0) {
+      onFinish(next)
       return
     }
-    if (index >= pool.length) {
-      setIndex(0)
-      resetPrompt('prompt')
-    }
-  }, [pool, index])
+    setPhase('summary')
+  }
 
   async function submitRating(difficulty: Difficulty) {
     if (!card || !correctness) return
     setBusy(true)
     try {
-      await onReview(card.id, { correctness, difficulty })
+      await onReview(card.id, { correctness, difficulty }, session.id)
+      const nextCompleted = [
+        ...completed,
+        { cardId: card.id, correctness },
+      ]
+      setCompleted(nextCompleted)
+
+      if (nextCompleted.length >= plannedSize) {
+        finishSession(nextCompleted, false)
+        return
+      }
+
+      setIndex((current) => current + 1)
       resetPrompt('prompt')
-      // After review the card usually leaves the due pool; stay at same index.
-      setIndex((current) => {
-        if (pool.length <= 1) return 0
-        return current >= pool.length - 1 ? 0 : current
-      })
     } finally {
       setBusy(false)
     }
+  }
+
+  function endSessionEarly() {
+    if (busy) return
+    // Only completed reviews are measured; unfinished cards are abandoned.
+    finishSession(completed, true)
   }
 
   function chooseOption(optionId: string) {
@@ -129,52 +161,101 @@ export function StudySession({
     return 'Pick an option to reveal the answer.'
   }
 
+  if (phase === 'summary') {
+    const accuracy =
+      summary.completed === 0 ? null : summary.correct / summary.completed
+    return (
+      <section className="panel study-stage session-summary">
+        <div className="empty-state">
+          <p className="eyebrow">
+            {summary.endedEarly ? 'Session ended early' : 'Session complete'}
+          </p>
+          <h2>
+            {summary.completed} of {summary.plannedSize} completed
+          </h2>
+          <p className="muted">
+            {summary.completed === 0
+              ? 'No cards were finished, so nothing was counted.'
+              : `${summary.correct} correct · ${formatAccuracy(accuracy)} accuracy. Only finished cards count toward your progress.`}
+          </p>
+          <div className="stat-stack summary-stats">
+            <div>
+              <p className="eyebrow">Completed</p>
+              <p className="stat-value">{summary.completed}</p>
+            </div>
+            <div>
+              <p className="eyebrow">Accuracy</p>
+              <p className="stat-value">{formatAccuracy(accuracy)}</p>
+            </div>
+            <div>
+              <p className="eyebrow">Skipped</p>
+              <p className="stat-value">
+                {Math.max(summary.plannedSize - summary.completed, 0)}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="button primary"
+            onClick={() => onFinish(summary)}
+          >
+            Back to dashboard
+          </button>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section className="study-layout">
       <aside className="panel study-sidebar">
         <div className="stat-stack">
           <div>
-            <p className="eyebrow">Study pool</p>
-            <p className="stat-value">{pool.length}</p>
-            <p className="muted small">due now</p>
+            <p className="eyebrow">Done</p>
+            <p className="stat-value">{completed.length}</p>
+            <p className="muted small">of {plannedSize} planned</p>
           </div>
           <div>
-            <p className="eyebrow">Library</p>
-            <p className="stat-value">{totalCards}</p>
-            <p className="muted small">total cards</p>
+            <p className="eyebrow">Left</p>
+            <p className="stat-value">{remaining}</p>
+            <p className="muted small">in this session</p>
           </div>
         </div>
-        <TagFilter
-          tags={tags}
-          selected={selectedTags}
-          onToggle={onToggleTag}
-          onClear={onClearTags}
-          dueByTag={dueByTag}
-        />
+        <button
+          type="button"
+          className="button ghost"
+          disabled={busy}
+          onClick={endSessionEarly}
+        >
+          End session
+        </button>
         <p className="muted small">
-          The pool is every card whose FSRS due time is now or earlier
-          {selectedTags.length > 0
-            ? ', matching at least one selected tag'
-            : ''}
-          .
+          Ending early keeps only the cards you already finished. The rest are
+          skipped with no review logged.
         </p>
       </aside>
 
       <div className="panel study-stage">
-        {phase === 'empty' || !card ? (
+        {!card ? (
           <div className="empty-state">
-            <h2>You are caught up</h2>
+            <h2>Session interrupted</h2>
             <p className="muted">
-              No cards are due
-              {selectedTags.length > 0 ? ' for the selected tags' : ''}. Create
-              more cards or check back when scheduled reviews arrive.
+              A card from this session is no longer available.
             </p>
+            <button
+              type="button"
+              className="button primary"
+              onClick={endSessionEarly}
+            >
+              End session
+            </button>
           </div>
         ) : (
           <>
             <div className="study-meta">
               <span className="eyebrow">
-                Card {Math.min(index + 1, pool.length)} of {pool.length}
+                Card {Math.min(completed.length + 1, plannedSize)} of{' '}
+                {plannedSize}
               </span>
               <span className="muted small">Was due {formatDue(card.fsrs)}</span>
             </div>
@@ -289,7 +370,8 @@ export function StudySession({
                     ) : (
                       <>
                         <p className={correctness === 'right' ? 'ok' : 'error'}>
-                          Marked as {correctness === 'right' ? 'right' : 'wrong'}.
+                          Marked as{' '}
+                          {correctness === 'right' ? 'right' : 'wrong'}.
                         </p>
                         <p className="muted small">
                           Now rate difficulty — FSRS uses that (wrong answers

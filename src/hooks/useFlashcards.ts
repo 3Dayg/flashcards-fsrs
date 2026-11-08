@@ -1,20 +1,32 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import {
+  addReview,
   createCard,
   deleteCard,
   listCards,
+  listReviews,
   saveCard,
   updateCard,
   type FlashcardInput,
 } from '../lib/db'
 import { scheduleAfterReview } from '../lib/fsrs'
+import { createId } from '../lib/id'
+import { computeProgressStats } from '../lib/progress'
 import { seedDemoCardsIfEmpty } from '../lib/seed'
-import { buildStudyPool, collectTags } from '../lib/study'
-import type { Flashcard, StudyRating } from '../types'
+import { buildStudyPool, collectTags, takeSessionCards } from '../lib/study'
+import type {
+  Flashcard,
+  PracticeSession,
+  ProgressStats,
+  ReviewEvent,
+  SessionPreset,
+  StudyRating,
+} from '../types'
 
 export function useFlashcards() {
   const [cards, setCards] = useState<Flashcard[]>([])
+  const [reviews, setReviews] = useState<ReviewEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedTags, setSelectedTags] = useState<string[]>([])
@@ -24,8 +36,12 @@ export function useFlashcards() {
     setError(null)
     try {
       await seedDemoCardsIfEmpty()
-      const next = await listCards()
-      setCards(next)
+      const [nextCards, nextReviews] = await Promise.all([
+        listCards(),
+        listReviews(),
+      ])
+      setCards(nextCards)
+      setReviews(nextReviews)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load cards.')
     } finally {
@@ -41,6 +57,10 @@ export function useFlashcards() {
   const studyPool = useMemo(
     () => buildStudyPool(cards, selectedTags),
     [cards, selectedTags],
+  )
+  const progress: ProgressStats = useMemo(
+    () => computeProgressStats(cards, reviews),
+    [cards, reviews],
   )
 
   const addCard = useCallback(async (input: FlashcardInput) => {
@@ -58,10 +78,25 @@ export function useFlashcards() {
   const removeCard = useCallback(async (id: string) => {
     await deleteCard(id)
     setCards((prev) => prev.filter((item) => item.id !== id))
+    setReviews((prev) => prev.filter((item) => item.cardId !== id))
   }, [])
 
+  const startSession = useCallback(
+    (preset: SessionPreset): PracticeSession | null => {
+      const queue = takeSessionCards(cards, selectedTags, preset)
+      if (queue.length === 0) return null
+      return {
+        id: createId('session'),
+        cardIds: queue.map((card) => card.id),
+        plannedSize: queue.length,
+        startedAt: new Date().toISOString(),
+      }
+    },
+    [cards, selectedTags],
+  )
+
   const reviewCard = useCallback(
-    async (id: string, rating: StudyRating) => {
+    async (id: string, rating: StudyRating, sessionId: string) => {
       const existing = cards.find((card) => card.id === id)
       if (!existing) return
       const { next } = scheduleAfterReview(existing.fsrs, rating)
@@ -70,8 +105,16 @@ export function useFlashcards() {
         fsrs: next,
         updatedAt: new Date().toISOString(),
       }
+      const event = await addReview({
+        cardId: id,
+        sessionId,
+        correctness: rating.correctness,
+        difficulty: rating.difficulty,
+        ratedAt: new Date().toISOString(),
+      })
       await saveCard(updated)
       setCards((prev) => prev.map((card) => (card.id === id ? updated : card)))
+      setReviews((prev) => [event, ...prev])
     },
     [cards],
   )
@@ -86,15 +129,18 @@ export function useFlashcards() {
 
   return {
     cards,
+    reviews,
     tags,
     selectedTags,
     studyPool,
+    progress,
     loading,
     error,
     refresh,
     addCard,
     editCard,
     removeCard,
+    startSession,
     reviewCard,
     toggleTag,
     clearTags,

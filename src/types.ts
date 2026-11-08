@@ -73,6 +73,56 @@ export type DueStats = {
   byTag: Record<string, number>
 }
 
+/** One completed review logged during a practice session. */
+export type ReviewEvent = {
+  id: string
+  cardId: string
+  sessionId: string
+  correctness: Correctness
+  difficulty: Difficulty
+  ratedAt: string
+}
+
+/** Snapshot of a practice run started from the Study dashboard. */
+export type PracticeSession = {
+  id: string
+  cardIds: string[]
+  plannedSize: number
+  startedAt: string
+}
+
+export type SessionSummary = {
+  sessionId: string
+  plannedSize: number
+  completed: number
+  correct: number
+  endedEarly: boolean
+}
+
+export type WindowStats = {
+  reviews: number
+  correct: number
+  accuracy: number | null
+}
+
+/** Dashboard progress derived from cards + review history. */
+export type ProgressStats = {
+  dueNow: number
+  total: number
+  neverStudied: number
+  learning: number
+  review: number
+  today: WindowStats
+  last7Days: WindowStats
+  previous7Days: WindowStats
+  accuracyDelta: number | null
+  volumeDelta: number
+  streakDays: number
+}
+
+export const SESSION_PRESETS = [10, 25, 50] as const
+export type SessionPreset = (typeof SESSION_PRESETS)[number]
+
 /** Human-readable labels for card types in the UI. */
 export const CARD_TYPE_LABELS: Record<CardType, string> = {
   multiple: 'Multiple choice',
