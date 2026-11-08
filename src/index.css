@@ -447,7 +447,7 @@ p {
   font-weight: 650;
 }
 
-.field input,
+.field input:not([type='radio']):not([type='checkbox']),
 .field textarea {
   width: 100%;
   border: 1px solid var(--line);
@@ -485,8 +485,16 @@ p {
   background: var(--teal-soft);
 }
 
-.type-option input {
+.type-option input[type='radio'],
+.option-row input[type='radio'] {
+  width: auto;
+  flex: 0 0 auto;
   margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  accent-color: var(--teal);
 }
 
 .library-item-heading {
