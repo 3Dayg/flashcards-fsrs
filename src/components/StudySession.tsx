@@ -207,9 +207,9 @@ export function StudySession({
   }
 
   return (
-    <section className="study-layout">
-      <aside className="panel study-sidebar">
-        <div className="stat-stack">
+    <section className="study-layout study-layout-session">
+      <aside className="panel progress-strip">
+        <div className="stat-stack strip-stats">
           <div>
             <p className="eyebrow">Done</p>
             <p className="stat-value">{completed.length}</p>
@@ -221,21 +221,23 @@ export function StudySession({
             <p className="muted small">in this session</p>
           </div>
         </div>
-        <button
-          type="button"
-          className="button ghost"
-          disabled={busy}
-          onClick={endSessionEarly}
-        >
-          End session
-        </button>
-        <p className="muted small">
-          Ending early keeps only the cards you already finished. The rest are
-          skipped with no review logged.
-        </p>
+        <div className="progress-strip-actions">
+          <button
+            type="button"
+            className="button ghost"
+            disabled={busy}
+            onClick={endSessionEarly}
+            title="Ending early keeps only finished cards; the rest are skipped."
+          >
+            End session
+          </button>
+          <p className="muted small strip-hint">
+            Early end keeps finished cards only — no penalty for the rest.
+          </p>
+        </div>
       </aside>
 
-      <div className="panel study-stage">
+      <div className="panel study-stage session-stage">
         {!card ? (
           <div className="empty-state">
             <h2>Session interrupted</h2>
