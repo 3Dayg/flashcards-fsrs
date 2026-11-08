@@ -12,10 +12,10 @@ type CardFormProps = {
 }
 
 const EMPTY_OPTIONS = ['', '', '', '']
-const CARD_TYPES: CardType[] = ['multiple', 'trueFalse', 'open']
+const CARD_TYPES: CardType[] = ['open', 'trueFalse', 'multiple']
 
 function initialType(card?: Flashcard): CardType {
-  return card?.type ?? 'multiple'
+  return card?.type ?? 'open'
 }
 
 export function CardForm({
