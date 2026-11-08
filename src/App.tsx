@@ -1,10 +1,16 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { CardForm } from './components/CardForm'
 import { CardList } from './components/CardList'
+import { StudyDashboard } from './components/StudyDashboard'
 import { StudySession } from './components/StudySession'
 import { useFlashcards } from './hooks/useFlashcards'
-import type { AppView, Flashcard } from './types'
+import type {
+  AppView,
+  Flashcard,
+  PracticeSession,
+  SessionPreset,
+} from './types'
 
 export default function App() {
   const {
@@ -12,11 +18,13 @@ export default function App() {
     tags,
     selectedTags,
     studyPool,
+    progress,
     loading,
     error,
     addCard,
     editCard,
     removeCard,
+    startSession,
     reviewCard,
     toggleTag,
     clearTags,
@@ -24,6 +32,32 @@ export default function App() {
 
   const [view, setView] = useState<AppView>('study')
   const [editing, setEditing] = useState<Flashcard | null>(null)
+  const [session, setSession] = useState<PracticeSession | null>(null)
+
+  const cardsById = useMemo(() => {
+    const map = new Map<string, Flashcard>()
+    for (const card of cards) map.set(card.id, card)
+    return map
+  }, [cards])
+
+  const dueByTag = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const card of studyPool) {
+      for (const tag of card.tags) {
+        counts[tag] = (counts[tag] ?? 0) + 1
+      }
+    }
+    return counts
+  }, [studyPool])
+
+  function beginSession(preset: SessionPreset) {
+    const next = startSession(preset)
+    if (next) setSession(next)
+  }
+
+  function leaveStudyViews() {
+    setSession(null)
+  }
 
   return (
     <div className="app-shell">
@@ -48,6 +82,7 @@ export default function App() {
             className={view === 'library' ? 'nav-link active' : 'nav-link'}
             onClick={() => {
               setEditing(null)
+              leaveStudyViews()
               setView('library')
             }}
           >
@@ -62,6 +97,7 @@ export default function App() {
             }
             onClick={() => {
               setEditing(null)
+              leaveStudyViews()
               setView('create')
             }}
           >
@@ -74,15 +110,26 @@ export default function App() {
         {loading ? <p className="muted">Loading your local deck…</p> : null}
         {error ? <p className="error">{error}</p> : null}
 
-        {!loading && view === 'study' ? (
-          <StudySession
-            pool={studyPool}
+        {!loading && view === 'study' && !session ? (
+          <StudyDashboard
+            dueCount={studyPool.length}
             tags={tags}
             selectedTags={selectedTags}
+            dueByTag={dueByTag}
+            progress={progress}
             onToggleTag={toggleTag}
             onClearTags={clearTags}
+            onStart={beginSession}
+          />
+        ) : null}
+
+        {!loading && view === 'study' && session ? (
+          <StudySession
+            key={session.id}
+            session={session}
+            cardsById={cardsById}
             onReview={reviewCard}
-            totalCards={cards.length}
+            onFinish={() => setSession(null)}
           />
         ) : null}
 

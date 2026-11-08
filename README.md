@@ -80,11 +80,18 @@ comma-separated **tags**:
 - **True / false** — statement graded against a True or False answer
 - **Open question** — recall the answer, then reveal and self-check
 
-### Study pool
+### Study dashboard and sessions
 
-The Study view builds a pool of cards whose FSRS **due** time is now or earlier.
-Optional tag filters keep only cards that have at least one selected tag
-(logical OR). Cards sort by due time so the oldest debt comes first.
+The Study view opens on a **dashboard**:
+
+- Pick a practice size with **10 / 25 / 50** (uses up to that many due cards).
+- Optional tag filters keep only cards that have at least one selected tag
+  (logical OR). Cards sort by due time so the oldest debt comes first.
+- Progress shows today’s accuracy, streak, and 7-day accuracy/volume vs the
+  prior week. Metrics use a local review log in IndexedDB.
+
+During a session you can **End session** early. Only cards you finished are
+rated and counted; unfinished cards are skipped with no penalty.
 
 ### Rating after an answer
 
