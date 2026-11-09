@@ -63,7 +63,11 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div
+      className={
+        view === 'study' && !session ? 'app-shell study-home' : 'app-shell'
+      }
+    >
       <div className="atmosphere" aria-hidden="true" />
       <header className="topbar">
         <div className="brand-block">

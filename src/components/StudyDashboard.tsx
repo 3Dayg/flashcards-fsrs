@@ -31,20 +31,25 @@ export function StudyDashboard({
   onStart,
 }: StudyDashboardProps) {
   const canStart = dueCount > 0
+  const dueHint = canStart
+    ? `${dueCount} due${selectedTags.length > 0 ? ' for selected tags' : ''}`
+    : selectedTags.length > 0
+      ? 'No cards due for selected tags'
+      : 'No cards due right now'
 
   return (
-    <section className="study-layout">
+    <section className="study-layout study-dashboard">
       <aside className="panel progress-strip">
         <div className="stat-stack strip-stats">
           <div>
             <p className="eyebrow">Due now</p>
             <p className="stat-value">{progress.dueNow}</p>
-            <p className="muted small">ready to practice</p>
+            <p className="muted small strip-caption">ready to practice</p>
           </div>
           <div>
             <p className="eyebrow">Library</p>
             <p className="stat-value">{progress.total}</p>
-            <p className="muted small">total cards</p>
+            <p className="muted small strip-caption">total cards</p>
           </div>
         </div>
         <div className="progress-strip-filters">
@@ -55,115 +60,93 @@ export function StudyDashboard({
             onClear={onClearTags}
             dueByTag={dueByTag}
           />
-          <p className="muted small strip-hint">
-            Presets pull the oldest due cards
-            {selectedTags.length > 0
-              ? ' matching a selected tag'
-              : ''}
-            .
-          </p>
+        </div>
+        <div className="progress-strip-actions">
+          <div className="practice-launch">
+            <div className="practice-copy">
+              <p className="eyebrow">Practice</p>
+              <h2>Start a session</h2>
+              <p className="muted small">{dueHint}</p>
+            </div>
+            <div className="preset-actions" role="group" aria-label="Session size">
+              {SESSION_PRESETS.map((preset) => {
+                const size = Math.min(preset, dueCount)
+                const disabled = !canStart
+                const label = disabled
+                  ? `Start ${preset}-card session, none due`
+                  : size < preset
+                    ? `Start ${preset}-card session, ${size} available`
+                    : `Start ${preset}-card session`
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    className="button primary preset-button"
+                    disabled={disabled}
+                    aria-label={label}
+                    title={label}
+                    onClick={() => onStart(preset)}
+                  >
+                    <span className="preset-count" aria-hidden="true">
+                      {preset}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </aside>
 
-      <div className="dashboard-stack">
-        <section className="panel study-stage">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Practice</p>
-              <h2>Start a session</h2>
-            </div>
+      <section className="panel study-stage progress-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Progress</p>
+            <h2>How you are improving</h2>
           </div>
-          <p className="muted">
-            {canStart
-              ? `${dueCount} card${dueCount === 1 ? '' : 's'} due${
-                  selectedTags.length > 0 ? ' for these tags' : ''
-                }. Pick how many to review.`
-              : selectedTags.length > 0
-                ? 'No cards are due for the selected tags.'
-                : 'No cards are due. Create more cards or check back later.'}
-          </p>
-          <div className="preset-actions" role="group" aria-label="Session size">
-            {SESSION_PRESETS.map((preset) => {
-              const size = Math.min(preset, dueCount)
-              const disabled = !canStart
-              return (
-                <button
-                  key={preset}
-                  type="button"
-                  className="button primary preset-button"
-                  disabled={disabled}
-                  onClick={() => onStart(preset)}
-                >
-                  <span className="preset-count">{preset}</span>
-                  <span className="button-hint">
-                    {disabled
-                      ? 'none due'
-                      : size < preset
-                        ? `${size} available`
-                        : 'cards'}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </section>
+        </div>
 
-        <section className="panel study-stage">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Progress</p>
-              <h2>How you are improving</h2>
-            </div>
-          </div>
-
-          <div className="stat-stack progress-grid">
-            <div>
-              <p className="eyebrow">Today</p>
-              <p className="stat-value">
-                {formatAccuracy(progress.today.accuracy)}
-              </p>
-              <p className="muted small">
-                {progress.today.reviews} review
-                {progress.today.reviews === 1 ? '' : 's'}
-              </p>
-            </div>
-            <div>
-              <p className="eyebrow">Streak</p>
-              <p className="stat-value">{progress.streakDays}</p>
-              <p className="muted small">
-                day{progress.streakDays === 1 ? '' : 's'} in a row
-              </p>
-            </div>
-            <div>
-              <p className="eyebrow">7-day accuracy</p>
-              <p className="stat-value">
-                {formatAccuracy(progress.last7Days.accuracy)}
-              </p>
-              <p className="muted small">
-                {formatDelta(progress.accuracyDelta, true)} vs prior week
-              </p>
-            </div>
-            <div>
-              <p className="eyebrow">7-day volume</p>
-              <p className="stat-value">{progress.last7Days.reviews}</p>
-              <p className="muted small">
-                {formatDelta(progress.volumeDelta)} vs prior week
-              </p>
-            </div>
-          </div>
-
-          <div className="progress-footnotes muted small">
-            <p>
-              Deck: {progress.neverStudied} never studied · {progress.learning}{' '}
-              learning · {progress.review} in review.
+        <div className="stat-stack progress-grid">
+          <div>
+            <p className="eyebrow">Today</p>
+            <p className="stat-value">
+              {formatAccuracy(progress.today.accuracy)}
             </p>
-            <p>
-              Only completed cards count toward progress. Ending a session early
-              skips the rest with no penalty.
+            <p className="muted small">
+              {progress.today.reviews} review
+              {progress.today.reviews === 1 ? '' : 's'}
             </p>
           </div>
-        </section>
-      </div>
+          <div>
+            <p className="eyebrow">Streak</p>
+            <p className="stat-value">{progress.streakDays}</p>
+            <p className="muted small">
+              day{progress.streakDays === 1 ? '' : 's'} in a row
+            </p>
+          </div>
+          <div>
+            <p className="eyebrow">7-day accuracy</p>
+            <p className="stat-value">
+              {formatAccuracy(progress.last7Days.accuracy)}
+            </p>
+            <p className="muted small">
+              {formatDelta(progress.accuracyDelta, true)} vs prior week
+            </p>
+          </div>
+          <div>
+            <p className="eyebrow">7-day volume</p>
+            <p className="stat-value">{progress.last7Days.reviews}</p>
+            <p className="muted small">
+              {formatDelta(progress.volumeDelta)} vs prior week
+            </p>
+          </div>
+        </div>
+
+        <p className="muted small progress-deck-line">
+          Deck: {progress.neverStudied} never studied · {progress.learning}{' '}
+          learning · {progress.review} in review.
+        </p>
+      </section>
     </section>
   )
 }
