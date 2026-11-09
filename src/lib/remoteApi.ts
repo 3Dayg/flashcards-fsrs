@@ -104,6 +104,10 @@ export async function addReview(input: ReviewInput): Promise<ReviewEvent> {
     id: createId('rev'),
     ...input,
   }
+  return saveReview(event)
+}
+
+export async function saveReview(event: ReviewEvent): Promise<ReviewEvent> {
   const response = await fetch('/api/reviews', {
     method: 'POST',
     headers: {

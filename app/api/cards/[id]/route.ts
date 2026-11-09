@@ -28,21 +28,24 @@ export async function PUT(request: Request, context: RouteContext) {
 
   try {
     const owned = await getCardForOwner(viewer.ownerSub, viewer.stage, id)
-    if (!owned) return errorJson('Card not found.', 404)
-
     const body = (await request.json()) as
       | FlashcardInput
       | { card: Flashcard }
 
-    const next =
-      'card' in body && body.card
+    if ('card' in body && body.card) {
+      if (body.card.id !== id) {
+        return errorJson('Card id mismatch.', 400)
+      }
+      const next: Flashcard = owned
         ? { ...body.card, id, createdAt: owned.createdAt }
-        : toFlashcard(body as FlashcardInput, owned)
-
-    if ('card' in body && body.card && body.card.id !== id) {
-      return errorJson('Card id mismatch.', 400)
+        : { ...body.card, id }
+      await upsertCardForOwner(viewer.ownerSub, viewer.stage, next)
+      return json(next, { status: owned ? 200 : 201 })
     }
 
+    if (!owned) return errorJson('Card not found.', 404)
+
+    const next = toFlashcard(body as FlashcardInput, owned)
     await upsertCardForOwner(viewer.ownerSub, viewer.stage, next)
     return json(next)
   } catch (error) {

@@ -68,6 +68,12 @@ export async function addReview(input: ReviewInput): Promise<ReviewEvent> {
     : local.addReview(input)
 }
 
+export async function saveReview(event: ReviewEvent): Promise<ReviewEvent> {
+  return (await getStorageMode()) === 'remote'
+    ? remote.saveReview(event)
+    : local.saveReview(event)
+}
+
 export async function listReviews(): Promise<ReviewEvent[]> {
   return (await getStorageMode()) === 'remote'
     ? remote.listReviews()

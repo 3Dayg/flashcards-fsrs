@@ -107,6 +107,11 @@ export async function addReview(input: ReviewInput): Promise<ReviewEvent> {
   return event
 }
 
+export async function saveReview(event: ReviewEvent): Promise<ReviewEvent> {
+  await db.reviews.put(event)
+  return event
+}
+
 export async function listReviews(): Promise<ReviewEvent[]> {
   const reviews = await db.reviews.toArray()
   return reviews.sort((a, b) => b.ratedAt.localeCompare(a.ratedAt))

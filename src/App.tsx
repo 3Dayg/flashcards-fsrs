@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 
 import { CardForm } from './components/CardForm'
 import { CardList } from './components/CardList'
+import { DeckTransfer } from './components/DeckTransfer'
 import { StudyDashboard } from './components/StudyDashboard'
 import { StudySession } from './components/StudySession'
 import { useFlashcards } from './hooks/useFlashcards'
@@ -15,6 +16,7 @@ import type {
 export default function App() {
   const {
     cards,
+    reviews,
     tags,
     selectedTags,
     studyPool,
@@ -24,6 +26,7 @@ export default function App() {
     addCard,
     editCard,
     removeCard,
+    importBackup,
     startSession,
     reviewCard,
     toggleTag,
@@ -151,6 +154,11 @@ export default function App() {
                 New card
               </button>
             </div>
+            <DeckTransfer
+              cards={cards}
+              reviews={reviews}
+              onImport={importBackup}
+            />
             <CardList
               cards={cards}
               onEdit={(card) => {
