@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react'
 
 import { CardForm } from './components/CardForm'
 import { CardList } from './components/CardList'
+import { DeckTransfer } from './components/DeckTransfer'
 import { StudyDashboard } from './components/StudyDashboard'
 import { StudySession } from './components/StudySession'
 import { useFlashcards } from './hooks/useFlashcards'
-import { emailDeckBackup } from './lib/backup'
 import type {
   AppView,
   Flashcard,
@@ -26,6 +26,7 @@ export default function App() {
     addCard,
     editCard,
     removeCard,
+    importBackup,
     startSession,
     reviewCard,
     toggleTag,
@@ -35,7 +36,6 @@ export default function App() {
   const [view, setView] = useState<AppView>('study')
   const [editing, setEditing] = useState<Flashcard | null>(null)
   const [session, setSession] = useState<PracticeSession | null>(null)
-  const [backupMessage, setBackupMessage] = useState<string | null>(null)
 
   const cardsById = useMemo(() => {
     const map = new Map<string, Flashcard>()
@@ -144,19 +144,6 @@ export default function App() {
               <div className="section-heading-actions">
                 <button
                   type="button"
-                  className="button ghost"
-                  disabled={cards.length === 0}
-                  onClick={() => {
-                    const result = emailDeckBackup(cards, reviews)
-                    setBackupMessage(
-                      `Downloaded ${result.filename} and opened your mail app. Attach that file before sending.`,
-                    )
-                  }}
-                >
-                  Backup via email
-                </button>
-                <button
-                  type="button"
                   className="button primary"
                   onClick={() => {
                     setEditing(null)
@@ -167,11 +154,11 @@ export default function App() {
                 </button>
               </div>
             </div>
-            {backupMessage ? (
-              <p className="backup-note muted small" role="status">
-                {backupMessage}
-              </p>
-            ) : null}
+            <DeckTransfer
+              cards={cards}
+              reviews={reviews}
+              onImport={importBackup}
+            />
             <CardList
               cards={cards}
               onEdit={(card) => {

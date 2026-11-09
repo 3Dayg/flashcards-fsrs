@@ -1,131 +1,137 @@
-import { CARD_TYPE_LABELS, type Flashcard, type ReviewEvent } from '../types'
+import type { Flashcard, ReviewEvent } from '../types'
+import { normalizeStoredCard } from './db'
+
+export const BACKUP_FORMAT = 'flashcards-fsrs-backup' as const
+export const BACKUP_VERSION = 1 as const
 
 export type DeckBackup = {
-  app: 'flashcards-fsrs'
-  version: 1
+  format: typeof BACKUP_FORMAT
+  version: typeof BACKUP_VERSION
   exportedAt: string
   cards: Flashcard[]
   reviews: ReviewEvent[]
 }
 
-/** Soft limit so most mail clients can open the compose window. */
-const MAILTO_BODY_LIMIT = 1800
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
 
-export function buildDeckBackup(
+function isReviewEvent(value: unknown): value is ReviewEvent {
+  if (!isRecord(value)) return false
+  return (
+    typeof value.id === 'string' &&
+    typeof value.cardId === 'string' &&
+    typeof value.sessionId === 'string' &&
+    (value.correctness === 'right' || value.correctness === 'wrong') &&
+    (value.difficulty === 'hard' ||
+      value.difficulty === 'good' ||
+      value.difficulty === 'easy') &&
+    typeof value.ratedAt === 'string'
+  )
+}
+
+function isFlashcardLike(value: unknown): value is Flashcard {
+  if (!isRecord(value)) return false
+  return (
+    typeof value.id === 'string' &&
+    typeof value.question === 'string' &&
+    typeof value.answer === 'string' &&
+    Array.isArray(value.tags) &&
+    typeof value.createdAt === 'string' &&
+    typeof value.updatedAt === 'string' &&
+    isRecord(value.fsrs)
+  )
+}
+
+/** Build a versioned backup document from the current deck. */
+export function buildBackup(
   cards: Flashcard[],
   reviews: ReviewEvent[],
   exportedAt = new Date().toISOString(),
 ): DeckBackup {
   return {
-    app: 'flashcards-fsrs',
-    version: 1,
+    format: BACKUP_FORMAT,
+    version: BACKUP_VERSION,
     exportedAt,
+    cards: cards.map((card) => normalizeStoredCard(card)),
+    reviews: [...reviews],
+  }
+}
+
+/** Validate and normalize a parsed backup payload. */
+export function parseBackup(raw: unknown): DeckBackup {
+  if (!isRecord(raw)) {
+    throw new Error('Backup file must be a JSON object.')
+  }
+  if (raw.format !== BACKUP_FORMAT) {
+    throw new Error('Not a Flashcards FSRS backup file.')
+  }
+  if (raw.version !== BACKUP_VERSION) {
+    throw new Error(`Unsupported backup version: ${String(raw.version)}.`)
+  }
+  if (!Array.isArray(raw.cards)) {
+    throw new Error('Backup cards must be an array.')
+  }
+  if (!Array.isArray(raw.reviews)) {
+    throw new Error('Backup reviews must be an array.')
+  }
+
+  const cards: Flashcard[] = []
+  for (const [index, item] of raw.cards.entries()) {
+    if (!isFlashcardLike(item)) {
+      throw new Error(`Backup card at index ${index} is invalid.`)
+    }
+    cards.push(normalizeStoredCard(item))
+  }
+
+  const reviews: ReviewEvent[] = []
+  for (const [index, item] of raw.reviews.entries()) {
+    if (!isReviewEvent(item)) {
+      throw new Error(`Backup review at index ${index} is invalid.`)
+    }
+    reviews.push(item)
+  }
+
+  return {
+    format: BACKUP_FORMAT,
+    version: BACKUP_VERSION,
+    exportedAt:
+      typeof raw.exportedAt === 'string'
+        ? raw.exportedAt
+        : new Date().toISOString(),
     cards,
     reviews,
   }
 }
 
-export function backupFilename(exportedAt: string): string {
+/** Parse backup JSON text from a file or clipboard. */
+export function parseBackupJson(text: string): DeckBackup {
+  let raw: unknown
+  try {
+    raw = JSON.parse(text) as unknown
+  } catch {
+    throw new Error('Backup file is not valid JSON.')
+  }
+  return parseBackup(raw)
+}
+
+function backupFilename(exportedAt: string): string {
   const day = exportedAt.slice(0, 10)
-  return `flashcards-fsrs-backup-${day}.json`
+  return `flashcards-backup-${day || 'export'}.json`
 }
 
-function formatCardForMail(card: Flashcard, index: number): string {
-  const lines = [
-    `${index + 1}. [${CARD_TYPE_LABELS[card.type]}] ${card.question}`,
-    `   Answer: ${card.answer}`,
-  ]
-  if (card.type === 'multiple') {
-    lines.push(
-      `   Options: ${card.options.map((option) => option.text).join(' | ')}`,
-    )
-  }
-  if (card.type === 'trueFalse') {
-    lines.push(`   Correct: ${card.correctBoolean ? 'True' : 'False'}`)
-  }
-  if (card.tags.length > 0) {
-    lines.push(`   Tags: ${card.tags.join(', ')}`)
-  }
-  return lines.join('\n')
-}
-
-export function formatBackupEmailBody(
-  backup: DeckBackup,
-  filename: string,
-): string {
-  const header = [
-    'Flashcards FSRS backup',
-    `Exported: ${backup.exportedAt}`,
-    `Cards: ${backup.cards.length}`,
-    `Reviews: ${backup.reviews.length}`,
-    '',
-    `A full JSON backup was also downloaded as ${filename}.`,
-    'Please attach that file to this email before sending.',
-    '',
-    'Cards:',
-    '',
-  ].join('\n')
-
-  if (backup.cards.length === 0) {
-    return `${header}(no cards yet)\n`
-  }
-
-  const cardBlocks = backup.cards.map((card, index) =>
-    formatCardForMail(card, index),
-  )
-  let body = header
-  let included = 0
-
-  for (const block of cardBlocks) {
-    const next =
-      included === 0 ? `${body}${block}\n` : `${body}\n${block}\n`
-    const remaining = backup.cards.length - (included + 1)
-    const suffix =
-      remaining > 0
-        ? `\n…and ${remaining} more card${remaining === 1 ? '' : 's'} in the attached JSON.\n`
-        : ''
-    if ((next + suffix).length > MAILTO_BODY_LIMIT) {
-      const omitted = backup.cards.length - included
-      body += `\n…and ${omitted} more card${omitted === 1 ? '' : 's'} in the attached JSON.\n`
-      return body
-    }
-    body = next
-    included += 1
-  }
-
-  return body
-}
-
-export function downloadBackupJson(backup: DeckBackup, filename: string): void {
-  const blob = new Blob([`${JSON.stringify(backup, null, 2)}\n`], {
+/** Trigger a browser download of the backup JSON. */
+export function downloadBackup(doc: DeckBackup): void {
+  const blob = new Blob([JSON.stringify(doc, null, 2)], {
     type: 'application/json',
   })
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
-  anchor.download = filename
+  anchor.download = backupFilename(doc.exportedAt)
   anchor.rel = 'noopener'
-  document.body.append(anchor)
+  document.body.appendChild(anchor)
   anchor.click()
   anchor.remove()
   URL.revokeObjectURL(url)
-}
-
-export function openBackupMailto(backup: DeckBackup, filename: string): void {
-  const subject = `Flashcards FSRS backup (${filename.replace(/\.json$/i, '')})`
-  const body = formatBackupEmailBody(backup, filename)
-  const href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-  window.location.href = href
-}
-
-/** Download the JSON backup and open the user's mail client to send it. */
-export function emailDeckBackup(
-  cards: Flashcard[],
-  reviews: ReviewEvent[],
-): { filename: string; cardCount: number } {
-  const backup = buildDeckBackup(cards, reviews)
-  const filename = backupFilename(backup.exportedAt)
-  downloadBackupJson(backup, filename)
-  openBackupMailto(backup, filename)
-  return { filename, cardCount: cards.length }
 }

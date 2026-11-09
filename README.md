@@ -16,6 +16,7 @@ flashcards-fsrs/
 │   ├── components/                     # Study, library, form, tag filter UI
 │   ├── hooks/useFlashcards.ts          # deck state + CRUD + reviews
 │   ├── lib/
+│   │   ├── backup.ts                   # JSON backup download / import
 │   │   ├── db.ts                       # Dexie / IndexedDB persistence
 │   │   ├── fsrs.ts                     # FSRS grade mapping + scheduling
 │   │   ├── seed.ts                     # first-run demo cards
@@ -121,8 +122,9 @@ them to narrow the due pool by topic.
 [Dexie](https://dexie.org/) wraps IndexedDB (`flashcards-fsrs` database). Data
 never leaves the browser. Clearing site data deletes the deck.
 
-### Backup via email
+### Backup and import
 
-In **Library**, use **Backup via email** to download a JSON copy of your deck
-and open your mail app with a card summary. Attach the downloaded file before
-sending — browsers cannot attach files to `mailto:` links automatically.
+In **Library**, use **Download backup** to save a JSON copy of your cards and
+review history (including FSRS scheduling). Use **Import backup** to merge a
+previously downloaded file by id — existing cards/reviews with the same id are
+updated; nothing else is deleted.

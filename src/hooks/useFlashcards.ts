@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import type { DeckBackup } from '../lib/backup'
 import {
   addReview,
   createCard,
@@ -7,6 +8,7 @@ import {
   listCards,
   listReviews,
   saveCard,
+  saveReview,
   updateCard,
   type FlashcardInput,
 } from '../lib/db'
@@ -81,6 +83,25 @@ export function useFlashcards() {
     setReviews((prev) => prev.filter((item) => item.cardId !== id))
   }, [])
 
+  const importBackup = useCallback(async (doc: DeckBackup) => {
+    for (const card of doc.cards) {
+      await saveCard(card)
+    }
+    for (const event of doc.reviews) {
+      await saveReview(event)
+    }
+    const [nextCards, nextReviews] = await Promise.all([
+      listCards(),
+      listReviews(),
+    ])
+    setCards(nextCards)
+    setReviews(nextReviews)
+    return {
+      cards: doc.cards.length,
+      reviews: doc.reviews.length,
+    }
+  }, [])
+
   const startSession = useCallback(
     (preset: SessionPreset): PracticeSession | null => {
       const queue = takeSessionCards(cards, selectedTags, preset)
@@ -140,6 +161,7 @@ export function useFlashcards() {
     addCard,
     editCard,
     removeCard,
+    importBackup,
     startSession,
     reviewCard,
     toggleTag,

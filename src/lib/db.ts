@@ -143,7 +143,7 @@ export async function listCards(): Promise<Flashcard[]> {
 }
 
 /** Coerce legacy rows (no `type`) into the current Flashcard union. */
-function normalizeStoredCard(raw: Flashcard): Flashcard {
+export function normalizeStoredCard(raw: Flashcard): Flashcard {
   const type = (raw as { type?: CardType }).type ?? 'multiple'
 
   if (type === 'trueFalse') {
@@ -248,6 +248,11 @@ export async function addReview(input: ReviewInput): Promise<ReviewEvent> {
     ...input,
   }
   await db.reviews.add(event)
+  return event
+}
+
+export async function saveReview(event: ReviewEvent): Promise<ReviewEvent> {
+  await db.reviews.put(event)
   return event
 }
 
