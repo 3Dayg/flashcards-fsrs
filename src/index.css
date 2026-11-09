@@ -213,21 +213,23 @@ p {
 }
 
 .preset-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
 }
 
 .preset-button {
-  display: grid;
-  gap: 0.2rem;
-  justify-items: start;
-  min-height: 4.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.4rem;
+  min-height: 3.4rem;
+  padding: 0.55rem 0.85rem;
 }
 
 .preset-count {
   font-family: var(--font-display);
-  font-size: 1.8rem;
+  font-size: 1.35rem;
   font-weight: 700;
   line-height: 1;
 }
@@ -682,10 +684,6 @@ p {
 
   .progress-strip-actions .button {
     width: 100%;
-  }
-
-  .preset-actions {
-    grid-template-columns: 1fr;
   }
 
   .progress-grid,

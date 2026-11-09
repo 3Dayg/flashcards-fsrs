@@ -86,21 +86,23 @@ export function StudyDashboard({
             {SESSION_PRESETS.map((preset) => {
               const size = Math.min(preset, dueCount)
               const disabled = !canStart
+              const label = disabled
+                ? `Start ${preset}-card session, none due`
+                : size < preset
+                  ? `Start ${preset}-card session, ${size} available`
+                  : `Start ${preset}-card session`
               return (
                 <button
                   key={preset}
                   type="button"
                   className="button primary preset-button"
                   disabled={disabled}
+                  aria-label={label}
+                  title={label}
                   onClick={() => onStart(preset)}
                 >
-                  <span className="preset-count">{preset}</span>
-                  <span className="button-hint">
-                    {disabled
-                      ? 'none due'
-                      : size < preset
-                        ? `${size} available`
-                        : 'cards'}
+                  <span className="preset-count" aria-hidden="true">
+                    {preset}
                   </span>
                 </button>
               )
