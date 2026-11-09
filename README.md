@@ -120,3 +120,9 @@ them to narrow the due pool by topic.
 
 [Dexie](https://dexie.org/) wraps IndexedDB (`flashcards-fsrs` database). Data
 never leaves the browser. Clearing site data deletes the deck.
+
+### Backup via email
+
+In **Library**, use **Backup via email** to download a JSON copy of your deck
+and open your mail app with a card summary. Attach the downloaded file before
+sending — browsers cannot attach files to `mailto:` links automatically.

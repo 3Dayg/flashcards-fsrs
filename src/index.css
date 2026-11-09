@@ -300,6 +300,17 @@ p {
   margin-bottom: 0.15rem;
 }
 
+.section-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.backup-note {
+  margin: 0.35rem 0 0.85rem;
+}
+
 .section-heading,
 .study-meta,
 .tag-filter-header {
