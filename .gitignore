@@ -7,6 +7,8 @@ pnpm-debug.log*
 node_modules
 dist
 dist-ssr
+.next
+out
 *.local
 
 .DS_Store
