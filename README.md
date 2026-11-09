@@ -1,42 +1,31 @@
 # Flashcards FSRS
 
-A React flashcard app with multiple-choice, true/false, and open recall
-questions, tags, and
+A client-only React flashcard app with multiple-choice, true/false, and open
+recall questions, tags, and
 [FSRS](https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm)
-spaced repetition.
-
-**Durable storage:** when you run or publish the Next.js app (for example with
-Cursor Apps), cards and review history are saved per signed-in user in Postgres,
-so redeploys do not wipe your deck. Preview and production stay separated by
-identity stage. Static GitHub Pages builds still use **IndexedDB** on the
-device.
+spaced repetition. Everything runs in the browser and persists to **IndexedDB**
+on the user’s machine — no backend, suitable for **GitHub Pages**.
 
 ## Project structure
 
 ```
 flashcards-fsrs/
-├── .github/workflows/deploy-pages.yml  # static Vite build → GitHub Pages
-├── app/                                # Next.js App Router + API routes
-├── cursor/                             # Cursor app identity helper
-├── cursor-app.json                     # requests Postgres for Cursor Apps
-├── migrations/                         # additive SQL migrations
+├── .github/workflows/deploy-pages.yml  # build + deploy to GitHub Pages
 ├── public/                             # static assets
-├── scripts/migrate.mjs                 # applies migrations when DATABASE_URL is set
 ├── src/
 │   ├── components/                     # Study, library, form, tag filter UI
 │   ├── hooks/useFlashcards.ts          # deck state + CRUD + reviews
 │   ├── lib/
-│   │   ├── db.ts                       # remote API or IndexedDB facade
-│   │   ├── localDb.ts                  # Dexie / IndexedDB persistence
-│   │   ├── remoteApi.ts                # browser client for /api/*
-│   │   ├── serverStore.ts              # Postgres-backed card/review CRUD
+│   │   ├── db.ts                       # Dexie / IndexedDB persistence
 │   │   ├── fsrs.ts                     # FSRS grade mapping + scheduling
 │   │   ├── seed.ts                     # first-run demo cards
 │   │   └── study.ts                    # due pool + tag filtering
 │   ├── App.tsx                         # Study / Library / Create views
-│   └── types.ts
+│   ├── types.ts
+│   └── index.css
+├── index.html
 ├── package.json
-└── vite.config.ts                      # static Pages base path /flashcards-fsrs/
+└── vite.config.ts                      # base path /flashcards-fsrs/
 ```
 
 ## Run locally
@@ -46,34 +35,23 @@ pnpm install
 pnpm dev
 ```
 
-Open the URL Next prints (usually `http://localhost:3000`). Local API calls use
-an in-memory PGlite database and a simulated signed-in viewer.
+Open the URL Vite prints (usually `http://localhost:5173/flashcards-fsrs/`).
 
 Other scripts:
 
 ```bash
-pnpm build         # Next.js production build + migrate (no-op without DATABASE_URL)
-pnpm start         # serve the Next.js build
-pnpm build:pages   # static Vite bundle for GitHub Pages
-pnpm test          # Vitest
+pnpm build    # production build into dist/
+pnpm preview  # serve dist locally
 ```
 
-## Deploy
-
-### Cursor Apps (durable deck)
-
-Publish this app with Cursor Apps as **private** or **team** so sign-in is
-available. The app declares Postgres in `cursor-app.json`; your cards are keyed
-by viewer identity and survive redeploys.
-
-### GitHub Pages (device-local deck)
+## Deploy to GitHub Pages
 
 1. Create a public GitHub repo named **`flashcards-fsrs`** (the Vite `base`
    path matches this name).
 2. Push this project to the repo’s `main` branch.
 3. In the repo: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 4. The workflow [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)
-   builds the static Vite bundle and deploys `dist/` on every push to `main`.
+   builds with pnpm and deploys the `dist/` folder on every push to `main`.
 
 Site URL:
 
@@ -81,6 +59,15 @@ Site URL:
 
 If you rename the repository, change `base` in `vite.config.ts` to
 `/<new-repo-name>/` and update this README.
+
+### Manual deploy alternative
+
+```bash
+pnpm build
+pnpm dlx gh-pages -d dist
+```
+
+Prefer the Actions workflow above so Pages stays in sync with `main`.
 
 ## How studying works
 
@@ -101,7 +88,7 @@ The Study view opens on a **dashboard**:
 - Optional tag filters keep only cards that have at least one selected tag
   (logical OR). Cards sort by due time so the oldest debt comes first.
 - Progress shows today’s accuracy, streak, and 7-day accuracy/volume vs the
-  prior week.
+  prior week. Metrics use a local review log in IndexedDB.
 
 During a session you can **End session** early. Only cards you finished are
 rated and counted; unfinished cards are skipped with no penalty.
@@ -124,10 +111,18 @@ Those two signals map into a single FSRS grade:
 `ts-fsrs` then updates stability, difficulty, and the next `due` timestamp so
 well-known cards reappear later and misses return sooner.
 
+### Tags
+
+Tags are stored on each card in IndexedDB. The library lists them; Study uses
+them to narrow the due pool by topic.
+
 ### Persistence
 
-- **Next.js / Cursor Apps:** Postgres via `/api/cards` and `/api/reviews`, scoped
-  to the signed-in viewer (`sub` + `stage`).
-- **GitHub Pages / offline:** [Dexie](https://dexie.org/) wraps IndexedDB
-  (`flashcards-fsrs` database) on the device. Clearing site data deletes that
-  local deck.
+[Dexie](https://dexie.org/) wraps IndexedDB (`flashcards-fsrs` database). Data
+never leaves the browser. Clearing site data deletes the deck.
+
+### Backup via email
+
+In **Library**, use **Backup via email** to download a JSON copy of your deck
+and open your mail app with a card summary. Attach the downloaded file before
+sending — browsers cannot attach files to `mailto:` links automatically.

@@ -5,6 +5,7 @@ import { CardList } from './components/CardList'
 import { StudyDashboard } from './components/StudyDashboard'
 import { StudySession } from './components/StudySession'
 import { useFlashcards } from './hooks/useFlashcards'
+import { emailDeckBackup } from './lib/backup'
 import type {
   AppView,
   Flashcard,
@@ -15,6 +16,7 @@ import type {
 export default function App() {
   const {
     cards,
+    reviews,
     tags,
     selectedTags,
     studyPool,
@@ -33,6 +35,7 @@ export default function App() {
   const [view, setView] = useState<AppView>('study')
   const [editing, setEditing] = useState<Flashcard | null>(null)
   const [session, setSession] = useState<PracticeSession | null>(null)
+  const [backupMessage, setBackupMessage] = useState<string | null>(null)
 
   const cardsById = useMemo(() => {
     const map = new Map<string, Flashcard>()
@@ -65,9 +68,7 @@ export default function App() {
       <header className="topbar">
         <div className="brand-block">
           <p className="brand">Flashcards FSRS</p>
-          <p className="brand-sub">
-            Spaced-repetition deck that keeps your cards across deploys.
-          </p>
+          <p className="brand-sub">Local spaced-repetition deck — no account.</p>
         </div>
         <nav className="nav" aria-label="Primary">
           <button
@@ -107,7 +108,7 @@ export default function App() {
       </header>
 
       <main id="main" className="main">
-        {loading ? <p className="muted">Loading your deck…</p> : null}
+        {loading ? <p className="muted">Loading your local deck…</p> : null}
         {error ? <p className="error">{error}</p> : null}
 
         {!loading && view === 'study' && !session ? (
@@ -140,17 +141,37 @@ export default function App() {
                 <p className="eyebrow">Library</p>
                 <h2>Your flashcards</h2>
               </div>
-              <button
-                type="button"
-                className="button primary"
-                onClick={() => {
-                  setEditing(null)
-                  setView('create')
-                }}
-              >
-                New card
-              </button>
+              <div className="section-heading-actions">
+                <button
+                  type="button"
+                  className="button ghost"
+                  disabled={cards.length === 0}
+                  onClick={() => {
+                    const result = emailDeckBackup(cards, reviews)
+                    setBackupMessage(
+                      `Downloaded ${result.filename} and opened your mail app. Attach that file before sending.`,
+                    )
+                  }}
+                >
+                  Backup via email
+                </button>
+                <button
+                  type="button"
+                  className="button primary"
+                  onClick={() => {
+                    setEditing(null)
+                    setView('create')
+                  }}
+                >
+                  New card
+                </button>
+              </div>
             </div>
+            {backupMessage ? (
+              <p className="backup-note muted small" role="status">
+                {backupMessage}
+              </p>
+            ) : null}
             <CardList
               cards={cards}
               onEdit={(card) => {
@@ -197,8 +218,8 @@ export default function App() {
       </main>
 
       <footer className="footer muted small">
-        Signed-in deploys keep your deck in a durable account database. Static
-        GitHub Pages builds still use IndexedDB on this device.
+        Cards stay in IndexedDB on this device. Deployable as a static GitHub
+        Pages site.
       </footer>
     </div>
   )
