@@ -1,5 +1,5 @@
 import type { Flashcard, ReviewEvent } from '../types'
-import { normalizeStoredCard } from './cardFactory'
+import { normalizeStoredCard } from './db'
 
 export const BACKUP_FORMAT = 'flashcards-fsrs-backup' as const
 export const BACKUP_VERSION = 1 as const

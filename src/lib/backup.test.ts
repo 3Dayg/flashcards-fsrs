@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 
-import { toFlashcard } from './cardFactory'
 import {
   BACKUP_FORMAT,
   BACKUP_VERSION,
@@ -8,22 +7,32 @@ import {
   parseBackup,
   parseBackupJson,
 } from './backup'
-import type { ReviewEvent } from '../types'
+import { newFsrsCard } from './fsrs'
+import type { Flashcard, ReviewEvent } from '../types'
 
-describe('backup', () => {
-  const card = toFlashcard({
+function multipleCard(): Flashcard {
+  const now = '2026-03-01T12:00:00.000Z'
+  return {
+    id: 'card_test',
     type: 'multiple',
     question: 'What does FSRS stand for?',
     answer: 'Free Spaced Repetition Scheduler',
     options: [
-      'Fast Study Recall System',
-      'Free Spaced Repetition Scheduler',
-      'Fixed Sequence Review Standard',
-      'Forgetting Slope Regression Score',
+      { id: 'opt_a', text: 'Fast Study Recall System' },
+      { id: 'opt_b', text: 'Free Spaced Repetition Scheduler' },
+      { id: 'opt_c', text: 'Fixed Sequence Review Standard' },
+      { id: 'opt_d', text: 'Forgetting Slope Regression Score' },
     ],
-    correctIndex: 1,
+    correctOptionId: 'opt_b',
     tags: ['fsrs', 'basics'],
-  })
+    createdAt: now,
+    updatedAt: now,
+    fsrs: newFsrsCard(new Date(now)),
+  }
+}
+
+describe('backup', () => {
+  const card = multipleCard()
 
   const review: ReviewEvent = {
     id: 'rev_test',
@@ -50,7 +59,7 @@ describe('backup', () => {
       type: 'multiple',
       question: card.question,
       answer: card.answer,
-      correctOptionId: card.type === 'multiple' ? card.correctOptionId : '',
+      correctOptionId: 'opt_b',
     })
     expect(parsed.reviews).toEqual([review])
   })

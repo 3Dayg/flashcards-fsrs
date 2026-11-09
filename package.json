@@ -4,23 +4,17 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "next dev --port 3000",
-    "dev:pages": "vite",
-    "build": "next build --webpack && node scripts/migrate.mjs",
-    "build:pages": "tsc -b tsconfig.pages.json && vite build",
-    "start": "next start --port ${PORT:-3000}",
+    "dev": "vite",
+    "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview",
-    "predeploy": "pnpm build:pages",
+    "predeploy": "pnpm build",
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.5.15",
     "dexie": "^4.4.7",
-    "next": "^16.4.5",
-    "pg": "^8.23.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "ts-fsrs": "^6.0.0"
@@ -30,18 +24,16 @@
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
     "@types/node": "^24.19.2",
-    "@types/pg": "^8.23.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "gh-pages": "^6.3.0",
     "jsdom": "^31.0.0",
     "oxlint": "^1.90.0",
-    "tsx": "^4.23.15",
     "typescript": "~7.0.2",
     "vite": "^8.3.6",
     "vitest": "^5.1.0"
   },
-  "description": "Flashcard app with FSRS spaced repetition, tags, and durable per-user storage",
+  "description": "Client-side flashcard SPA with FSRS spaced repetition and tags",
   "homepage": "https://3dayg.github.io/flashcards-fsrs/"
 }
