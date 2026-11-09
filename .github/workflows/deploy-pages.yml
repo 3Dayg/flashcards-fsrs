@@ -38,8 +38,8 @@ jobs:
       - name: Test
         run: pnpm test
 
-      - name: Build
-        run: pnpm build
+      - name: Build static GitHub Pages bundle
+        run: pnpm build:pages
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
